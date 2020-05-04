@@ -1,7 +1,9 @@
 import React, {Component} from 'react';
 
 import Modal from '../components/modal/Modal';
+import Spinner from '../components/Spinner/Spinner';
 import Backdrop from '../components/Backdrop/Backdrop';
+import EventList from '../components/Events/EventList/EventList';
 import './Events.css';
 
 import AuthContext from '../context/auth-context';
@@ -9,7 +11,9 @@ import AuthContext from '../context/auth-context';
 class EventsPage extends Component{
     state={
         creating:false,
-        events:[]
+        events:[],
+        isLoading:false,
+        selectedEvent:null
     }
 
     static contextType = AuthContext;
@@ -50,12 +54,8 @@ class EventsPage extends Component{
                        _id
                        title
                        description
-                       price
                        date
-                       creator {
-                           _id
-                           email
-                       }
+                       price
                     }
                 }
             `
@@ -77,8 +77,22 @@ class EventsPage extends Component{
             return res.json();
         })
         .then(responData=>{
-            console.log(responData);
-            this.fetchEvents();
+            // code below means that we no longer update events data every updating events
+            // the program is a little bit faster therefore.
+            this.setState(prevState=>{
+                const updatedEvents = [...prevState.events];
+                updatedEvents.push({
+                    _id: responData.data.createEvent._id,
+                    title: responData.data.createEvent.title,
+                    description:responData.data.createEvent.description,
+                    date:responData.data.createEvent.date,
+                    price:responData.data.createEvent.price,
+                    creator :{
+                        _id:this.context.userId
+                    }
+                })
+                return {events: updatedEvents};
+            })
         })
         .catch(err=> {
             console.log(err);
@@ -89,7 +103,7 @@ class EventsPage extends Component{
     };
     
     modalCancelHandler = ()=>{
-        this.setState({creating:false})
+        this.setState({creating:false, selectedEvent:null})
     };
 
     createEventHandler = ()=>{
@@ -97,6 +111,7 @@ class EventsPage extends Component{
     }
 
     fetchEvents = ()=>{
+        this.setState({isLoading:true});
         const reqQuery={
             query: `
                 query {
@@ -130,20 +145,30 @@ class EventsPage extends Component{
         .then(responData=>{
             console.log(responData);
             const events = responData.data.events;
-            this.setState({events: events});
+            this.setState({events: events, isLoading:false});
         })
         .catch(err=> {
             console.log(err);
+            this.setState({isLoading:false});
             
         })
     }
+
+    showDetailHandler = eventId =>{
+        this.setState(prevState=>{
+            const selectedEvent = prevState.events.find( e => e._id === eventId);
+            return {selectedEvent: selectedEvent};
+        })
+    }
+
+    bookEventHandler = () =>{
+
+    }
     render(){
-        const eventList = this.state.events.map(event=>{
-            return <li key={event._id} className="events_list_items">{event.title}</li>;
-        });
+    
         return(
             <React.Fragment>
-                {this.state.creating && <Backdrop></Backdrop>}
+                {(this.state.creating || this.state.selectedEvent ) && <Backdrop/>}
                 {this.state.creating &&
                     <Modal 
                         title="Add Event" 
@@ -151,6 +176,7 @@ class EventsPage extends Component{
                         canConfirm 
                         onConfirm={this.modalConfirmHandler} 
                         onCancel={this.modalCancelHandler}
+                        confirmText="Confirm"
                     >
                         <form>
                             <div className="form-control">
@@ -170,7 +196,21 @@ class EventsPage extends Component{
                                <textarea id="description" rows="4" ref={this.descriptionElRef}></textarea>
                             </div>
                         </form>
-                </Modal>}
+                </Modal>
+                }
+                {this.state.selectedEvent &&
+                    <Modal 
+                        title={this.state.selectedEvent.title}
+                        canCancel
+                        canConfirm 
+                        onConfirm={this.bookEventHandler} 
+                        onCancel={this.modalCancelHandler}
+                        confirmText="Book"
+                    >
+                        <h1>{this.state.selectedEvent.title}</h1>
+                        <h2>{this.state.selectedEvent.price} - {new Date(this.state.selectedEvent.date).toLocaleDateString()}</h2>
+                        <p>{this.state.selectedEvent.description}</p>
+                </Modal> }
                 {/* events box just only available if we are authenticated. */}
                 {this.context.token && 
                 <div className="events-control">
@@ -178,9 +218,9 @@ class EventsPage extends Component{
                     <button className="btn" onClick={this.createEventHandler}>Create Event</button>
                 </div>
                 }
-                <ul className="events_list">
-                    {eventList}
-                </ul>
+                {this.state.isLoading ? (<Spinner/>):(
+                    <EventList events={this.state.events} authUserId={this.context.userId} onViewDetail={this.showDetailHandler} />
+                )}
             </React.Fragment>
             ) 
     }

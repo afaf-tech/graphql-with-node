@@ -1,0 +1,26 @@
+.events_list_items {
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid #5101d1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .events_list_items h1{
+      margin: 0;
+      font-size: 1.5rem;
+      color: #5101d1;
+  }
+
+  .events_list_items h2{
+      margin: 0;
+      font-size: 1rem;
+      color: rgb(146, 161, 140);
+  }
+
+
+  .events_list_items p{
+      margin: 0;
+
+  }
